@@ -1578,14 +1578,14 @@ function chessWebSocketPlugin(): Plugin {
         }
       }, 30000);
 
-      // Authoritative AFK Watchdog: fast 1.2s timeout for auto-managed players, 15s for active players
+      // Authoritative AFK Watchdog: fast 1.2s timeout for auto-managed players, 60s for active players
       setInterval(() => {
         const now = Date.now();
         for (const room of rooms.values()) {
           if (room.status === 'playing' && room.boardState && room.boardState.phase === 'playing') {
-            // 1. 十三张/十三水：比水前超时保障 (40秒未全员开牌比水则自动保底交牌比水)
+            // 1. 十三张/十三水：比水前超时保障 (60秒未全员开牌比水则自动保底交牌比水)
             if (room.gameType === 'shisanshui') {
-              if (room.lastTurnTs && now - room.lastTurnTs > 40000) {
+              if (room.lastTurnTs && now - room.lastTurnTs > 60000) {
                 room.lastTurnTs = now;
                 const bs = room.boardState;
                 if (!bs.shisanshuiSubmissions) bs.shisanshuiSubmissions = {};
@@ -1622,8 +1622,8 @@ function chessWebSocketPlugin(): Plugin {
             const currentSeat = room.turnSeat || 0;
             const curPlayer = room.players?.find((p: any) => p.seat === currentSeat);
             const isPlayerAuto = Boolean(curPlayer?.isAutoManaged || (room.boardState?.autoManagedSeats && room.boardState.autoManagedSeats[currentSeat]));
-            // 关键优化：已托管玩家仅需 1200ms 快速出牌；未托管玩家给足 15000ms 思考时间
-            const timeoutThreshold = isPlayerAuto ? 1200 : 15000;
+            // 关键优化：已托管玩家仅需 1200ms 快速出牌；未托管玩家给足 60000ms 思考时间
+            const timeoutThreshold = isPlayerAuto ? 1200 : 60000;
 
             if (room.lastTurnTs && now - room.lastTurnTs > timeoutThreshold) {
               room.lastTurnTs = now;

@@ -1032,7 +1032,7 @@ function resetRemoteWatchdog() {
           }
         }
       }
-    }, 52000);
+    }, 65000);
   }
 }
 
@@ -1057,7 +1057,7 @@ function startTurnCountdown() {
       checkAutoHostTurn();
       return;
     }
-    turnCountdown.value = 15;
+    turnCountdown.value = 60;
     countdownInterval = setInterval(() => {
       if (winnerSeat.value !== null) {
         stopTurnCountdown();

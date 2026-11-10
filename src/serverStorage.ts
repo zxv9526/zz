@@ -91,38 +91,7 @@ const defaultDatabase: DatabaseSchema = {
   adminPhones: [],
   revokedPhones: [],
   profiles: {},
-  records: [
-    {
-      id: 'REC-101',
-      gameType: 'shisanshui',
-      gameName: '水镜十三水',
-      result: 'win',
-      coinsDelta: 680,
-      ratingDelta: 30,
-      details: '尾道同花顺中道葫芦打枪全胜',
-      timestamp: '10:05',
-    },
-    {
-      id: 'REC-102',
-      gameType: 'yansan',
-      gameName: '经典烟三',
-      result: 'win',
-      coinsDelta: 450,
-      ratingDelta: 20,
-      details: '方块四连环开路，率先出清',
-      timestamp: '10:08',
-    },
-    {
-      id: 'REC-103',
-      gameType: 'mahjong',
-      gameName: '经典国标麻将',
-      result: 'win',
-      coinsDelta: 880,
-      ratingDelta: 40,
-      details: '自摸万字清一色满贯',
-      timestamp: '10:12',
-    },
-  ],
+  records: [],
   adminLogs: [
     {
       id: 'log-init-1',
@@ -202,10 +171,12 @@ function ensureDbIntegrity(db: any): DatabaseSchema {
 
   // Cleanse legacy game records & stats
   if (Array.isArray(db.records)) {
-    db.records = db.records.filter((r: any) => r.gameType === 'yansan' || r.gameType === 'shisanshui' || r.gameType === 'mahjong');
-    if (db.records.length === 0) {
-      db.records = [...defaultDatabase.records];
-    }
+    db.records = db.records.filter((r: any) =>
+      (r.gameType === 'yansan' || r.gameType === 'shisanshui' || r.gameType === 'mahjong') &&
+      r.id !== 'REC-101' && r.id !== 'REC-102' && r.id !== 'REC-103'
+    );
+  } else {
+    db.records = [];
   }
 
   for (const p of Object.values(db.profiles) as any[]) {

@@ -3577,7 +3577,8 @@ function onGameMove(payload: any) {
       coinsDelta >= 0 ? 'game_win' : 'game_loss',
       `${getGameName(activeGameType.value)}对局结算`,
       coinsDelta,
-      userProfile.coins
+      userProfile.coins,
+      userProfile.phone || userProfile.id
     );
 
     const rec: MatchRecord = {
@@ -3601,7 +3602,7 @@ function onGameMove(payload: any) {
       }
     }
     saveLocalProfile(userProfile);
-    saveLocalRecords(matchRecords);
+    saveLocalRecords(matchRecords, userProfile.phone || userProfile.id);
     syncAndCheckProfile();
   }
 }
@@ -3643,7 +3644,8 @@ async function fetchFreshProfile() {
           diff >= 0 ? 'admin_grant' : 'admin_deduct',
           `钱庄同步筹码 (${diff >= 0 ? '+' : ''}${diff})`,
           diff,
-          userProfile.coins
+          userProfile.coins,
+          userProfile.phone || userProfile.id
         );
       }
     } catch {}
@@ -3679,18 +3681,20 @@ function onGameRestart() {
 function onUpdateProfile(p: UserProfile) {
   Object.assign(userProfile, p);
   saveLocalProfile(userProfile);
+  const freshRecords = loadLocalRecords(userProfile.phone || userProfile.id);
+  matchRecords.splice(0, matchRecords.length, ...freshRecords);
   syncAndCheckProfile();
 }
 
 function onUpdateRecords(r: MatchRecord[]) {
   matchRecords.splice(0, matchRecords.length, ...r);
-  saveLocalRecords(matchRecords);
+  saveLocalRecords(matchRecords, userProfile.phone || userProfile.id);
   syncAndCheckProfile();
 }
 
 function onClaimAchievement(reward: number) {
   userProfile.coins += reward;
-  recordPointsTx('admin_grant', '雀神成就奖励领取', reward, userProfile.coins);
+  recordPointsTx('admin_grant', '雀神成就奖励领取', reward, userProfile.coins, userProfile.phone || userProfile.id);
   saveLocalProfile(userProfile);
   syncAndCheckProfile();
 }

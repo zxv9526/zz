@@ -279,13 +279,13 @@
                   支出
                 </button>
               </div>
-              <span class="text-[10px] font-mono">共 {{ filteredTransactions.length }} 笔明细</span>
+              <span class="text-[10px] font-mono">近 7 天共 {{ filteredTransactions.length }} 笔明细</span>
             </div>
 
             <!-- Transaction List (2-column layout to fit screen height) -->
             <div class="grid grid-cols-2 gap-2 flex-1 min-h-0 overflow-hidden">
               <div v-if="filteredTransactions.length === 0" class="col-span-full py-8 text-center text-xs text-[#6B5744] bg-[#FFFDF8] rounded-2xl border border-dashed border-[#D8C7B0]">
-                暂无收支明细记录
+                近 7 天暂无收支明细记录
               </div>
               <div
                 v-for="tx in paginatedTransactions"
@@ -482,16 +482,18 @@ async function searchUser() {
   }
 }
 
-const transactions = ref<PointsTransaction[]>(loadPointsTransactions());
+const userKey = computed(() => props.profile.phone || props.profile.id);
+
+const transactions = ref<PointsTransaction[]>(loadPointsTransactions(userKey.value));
 
 onMounted(() => {
-  transactions.value = loadPointsTransactions();
+  transactions.value = loadPointsTransactions(userKey.value);
 });
 
 watch(
-  () => props.profile.coins,
+  [() => props.profile.coins, () => userKey.value],
   () => {
-    transactions.value = loadPointsTransactions();
+    transactions.value = loadPointsTransactions(userKey.value);
   }
 );
 
@@ -538,8 +540,8 @@ async function submitTransfer() {
       searchedUser.value.coins = data.recipientCoins;
     }
 
-    recordPointsTx('transfer_out', `向 ${searchedUser.value.name} (${searchedUser.value.phone}) 赠送筹码`, -amt, newCoins);
-    transactions.value = loadPointsTransactions();
+    recordPointsTx('transfer_out', `向 ${searchedUser.value.name} (${searchedUser.value.phone}) 赠送筹码`, -amt, newCoins, userKey.value);
+    transactions.value = loadPointsTransactions(userKey.value);
 
     transferMessage.value = `成功向 ${searchedUser.value.name} 赠送 ${amt.toLocaleString()} 分筹码！对方已实时到账。`;
     transferSuccess.value = true;

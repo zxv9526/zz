@@ -818,7 +818,7 @@ const readyPlayersCount = computed(() => {
 
 const isAutoHost = ref(false);
 const isDrawStalemate = ref(false);
-const turnCountdown = ref(15);
+const turnCountdown = ref(60);
 let countdownInterval: any = null;
 let autoHostTimer: any = null;
 
@@ -829,7 +829,7 @@ function startTurnCountdown() {
     checkAutoHostTurn();
     return;
   }
-  turnCountdown.value = 15;
+  turnCountdown.value = 60;
   drawTable();
   countdownInterval = setInterval(() => {
     if (hasWon.value || isDrawStalemate.value) {

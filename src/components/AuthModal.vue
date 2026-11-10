@@ -391,6 +391,10 @@ async function submitRegister() {
     };
     saveLocalProfile(newProfile);
 
+    if (newProfile.coins > 0) {
+      recordPointsTx('checkin', '新茶客开局好运礼金', newProfile.coins, newProfile.coins, phone || newProfile.id);
+    }
+
     // Save to local registered accounts store for offline/persistent login
     const hashedPassword = await hashPassword(formPassword.value);
     const accounts = getRegisteredAccounts();

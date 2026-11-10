@@ -61,6 +61,7 @@ export interface PointsTransaction {
   amount: number;
   balanceAfter: number;
   timestamp: string;
+  createdAt?: number;
 }
 
 export interface AccountData {
@@ -124,6 +125,24 @@ const STORAGE_KEY_OFFLINE_PRACTICE_RECORDS = 'rustchess_offline_practice_records
 const STORAGE_KEY_POINTS_TX = 'rustchess_points_tx_v3';
 const STORAGE_KEY_ACCOUNTS = 'rustchess_accounts_v3';
 
+function getUserStorageKey(baseKey: string, customPhoneOrId?: string): string {
+  try {
+    let key = customPhoneOrId;
+    if (!key) {
+      const raw = localStorage.getItem(STORAGE_KEY_PROFILE);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        key = parsed.phone || parsed.id;
+      }
+    }
+    if (key && key !== 'guest' && key !== 'default') {
+      const cleanKey = String(key).trim().replace(/\D/g, '') || String(key).trim();
+      return `${baseKey}_${cleanKey}`;
+    }
+  } catch {}
+  return baseKey;
+}
+
 export function loadLocalProfile(): UserProfile {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PROFILE);
@@ -138,7 +157,7 @@ export function loadLocalProfile(): UserProfile {
         profile.avatar = '👑';
       }
       if (!profile.stats.yansan) {
-        profile.stats.yansan = { played: 26, won: 18, highestScore: 1200 };
+        profile.stats.yansan = { played: 0, won: 0, highestScore: 0 };
       }
       return profile;
     }
@@ -157,50 +176,21 @@ export function saveLocalProfile(profile: UserProfile): void {
   } catch {}
 }
 
-export function loadLocalRecords(): MatchRecord[] {
+export function loadLocalRecords(userKey?: string): MatchRecord[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_RECORDS);
+    const key = getUserStorageKey(STORAGE_KEY_RECORDS, userKey);
+    const raw = localStorage.getItem(key);
     if (raw) {
       return JSON.parse(raw);
     }
   } catch {}
-  return [
-    {
-      id: 'REC-101',
-      gameType: 'yansan',
-      gameName: '经典烟三',
-      result: 'win',
-      coinsDelta: 600,
-      ratingDelta: 25,
-      details: '方块三连环开路，率先出清',
-      timestamp: '10:05',
-    },
-    {
-      id: 'REC-102',
-      gameType: 'mahjong',
-      gameName: '经典国标麻将',
-      result: 'win',
-      coinsDelta: 880,
-      ratingDelta: 40,
-      details: '自摸清一色满贯',
-      timestamp: '10:12',
-    },
-    {
-      id: 'REC-103',
-      gameType: 'shisanshui',
-      gameName: '水镜十三水',
-      result: 'win',
-      coinsDelta: 600,
-      ratingDelta: 30,
-      details: '头道三条尾道葫芦全垒打',
-      timestamp: '10:18',
-    },
-  ];
+  return [];
 }
 
-export function saveLocalRecords(records: MatchRecord[]): void {
+export function saveLocalRecords(records: MatchRecord[], userKey?: string): void {
   try {
-    localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(records));
+    const key = getUserStorageKey(STORAGE_KEY_RECORDS, userKey);
+    localStorage.setItem(key, JSON.stringify(records));
   } catch {}
 }
 
@@ -229,60 +219,85 @@ export function clearOfflinePracticeRecords(): void {
   } catch {}
 }
 
-export function loadPointsTransactions(): PointsTransaction[] {
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function loadPointsTransactions(userKey?: string): PointsTransaction[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_POINTS_TX);
+    const key = getUserStorageKey(STORAGE_KEY_POINTS_TX, userKey);
+    const raw = localStorage.getItem(key);
     if (raw) {
-      return JSON.parse(raw);
+      const list: PointsTransaction[] = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        const now = Date.now();
+        const validList = list.filter((tx) => {
+          let time = tx.createdAt;
+          if (!time && tx.id) {
+            const match = tx.id.match(/^tx_(\d+)_/);
+            if (match && match[1]) {
+              time = Number(match[1]);
+            }
+          }
+          if (time && typeof time === 'number' && !isNaN(time)) {
+            return now - time <= SEVEN_DAYS_MS;
+          }
+          return true;
+        });
+
+        if (validList.length !== list.length) {
+          localStorage.setItem(key, JSON.stringify(validList));
+        }
+        return validList;
+      }
     }
   } catch {}
-  return [
-    {
-      id: 'tx_init',
-      type: 'checkin',
-      title: '新手大厅开运礼金',
-      amount: 5000,
-      balanceAfter: 8888,
-      timestamp: '10:00',
-    },
-    {
-      id: 'tx_1',
-      type: 'game_win',
-      title: '烟三出清获胜结算',
-      amount: 600,
-      balanceAfter: 9488,
-      timestamp: '10:05',
-    },
-    {
-      id: 'tx_2',
-      type: 'game_win',
-      title: '十三水全垒打得分',
-      amount: 500,
-      balanceAfter: 9988,
-      timestamp: '10:08',
-    },
-  ];
+  return [];
 }
 
 export function recordPointsTx(
   type: PointsTransaction['type'],
   title: string,
   amount: number,
-  balanceAfter: number
+  balanceAfter: number,
+  userKey?: string
 ): void {
   try {
-    const list = loadPointsTransactions();
+    const now = Date.now();
+    const list = loadPointsTransactions(userKey);
+    const dateObj = new Date(now);
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const timeStr = dateObj.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    const formattedTimestamp = `${month}-${day} ${timeStr}`;
+
     const newTx: PointsTransaction = {
-      id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      id: `tx_${now}_${Math.random().toString(36).slice(2, 6)}`,
       type,
       title,
       amount,
       balanceAfter,
-      timestamp: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: formattedTimestamp,
+      createdAt: now,
     };
+
     list.unshift(newTx);
-    if (list.length > 50) list.pop();
-    localStorage.setItem(STORAGE_KEY_POINTS_TX, JSON.stringify(list));
+    const validList = list.filter((tx) => {
+      let time = tx.createdAt;
+      if (!time && tx.id) {
+        const match = tx.id.match(/^tx_(\d+)_/);
+        if (match && match[1]) {
+          time = Number(match[1]);
+        }
+      }
+      if (time && typeof time === 'number' && !isNaN(time)) {
+        return now - time <= SEVEN_DAYS_MS;
+      }
+      return true;
+    });
+
+    if (validList.length > 100) validList.length = 100;
+
+    const key = getUserStorageKey(STORAGE_KEY_POINTS_TX, userKey);
+    localStorage.setItem(key, JSON.stringify(validList));
   } catch {}
 }
 
